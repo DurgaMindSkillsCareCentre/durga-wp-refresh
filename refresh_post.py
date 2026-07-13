@@ -4,6 +4,10 @@ WordPress.com Weekly Content Refresh
 Picks the post that hasn't been touched the longest, appends an
 updated-date line, and inserts one internal link to another post
 with an overlapping keyword. Runs weekly via GitHub Actions.
+
+Uses context=edit on both fetch and update to keep content as raw
+as possible and minimize WordPress.com's sanitizer reprocessing
+the existing inline-styled button grid on every save.
 """
 
 import os
@@ -22,7 +26,11 @@ def get_all_posts():
     posts = []
     page_handle = None
     while True:
-        params = {"number": 100, "fields": "ID,title,content,modified,URL"}
+        params = {
+            "number": 100,
+            "fields": "ID,title,content,modified,URL",
+            "context": "edit",
+        }
         if page_handle:
             params["page_handle"] = page_handle
         r = requests.get(f"{API_BASE}/posts/", headers=HEADERS, params=params)
@@ -60,8 +68,8 @@ def build_updated_content(original_content, related_post):
     if f"Updated: {today}" in original_content:
         return None
 
-    # Wrapped in a full-width block div so it can't flow inline
-    # next to the last button in the teal button grid above it.
+    # Self-contained inline-style block, kept isolated from the
+    # existing button grid's own inline styles.
     footer = (
         f'\n\n<div style="display:block; clear:both; width:100%; margin-top:20px;">'
         f'<p><em>Updated: {today}</em> — '
@@ -76,7 +84,7 @@ def update_post(post_id, new_content):
     r = requests.post(
         f"{API_BASE}/posts/{post_id}/",
         headers=HEADERS,
-        data={"content": new_content},
+        data={"content": new_content, "context": "edit"},
     )
     r.raise_for_status()
     return r.json()
