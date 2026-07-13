@@ -82,6 +82,7 @@ def main():
     posts = get_all_posts()
     if not posts:
         print("No posts found.")
+        write_summary("No posts found. Nothing was refreshed.")
         return
 
     target = pick_oldest_updated(posts)
@@ -89,11 +90,23 @@ def main():
     new_content = build_updated_content(target["content"], related)
 
     if new_content is None:
-        print(f"Post '{target['title']}' already refreshed this month. Skipping.")
+        msg = f"Post '{target['title']}' already refreshed this month. Skipped."
+        print(msg)
+        write_summary(msg)
         return
 
     update_post(target["ID"], new_content)
+    msg = (
+        f"Refreshed post:\n  {target['title']}\n  {target['URL']}\n\n"
+        f"Linked to related post:\n  {related['title']}\n  {related['URL']}"
+    )
     print(f"Refreshed: {target['title']} (linked to: {related['title']})")
+    write_summary(msg)
+
+
+def write_summary(text):
+    with open("summary.txt", "w", encoding="utf-8") as f:
+        f.write(text)
 
 
 if __name__ == "__main__":
