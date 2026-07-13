@@ -25,3 +25,15 @@ jobs:
           WP_SITE: ${{ secrets.WP_SITE }}
           WP_ACCESS_TOKEN: ${{ secrets.WP_ACCESS_TOKEN }}
         run: python refresh_post.py
+
+      - name: Email weekly summary
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Durga WordPress Weekly Refresh"
+          to: smartpos.systems@gmail.com
+          from: Durga WP Refresh Bot
+          body: file://summary.txt
