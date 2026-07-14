@@ -5,14 +5,23 @@ import os
 
 WP_SITE = os.environ["WP_SITE"]
 ACCESS_TOKEN = os.environ["WP_ACCESS_TOKEN"]
-FEATURED_PAGE_ID = "1285"   # <-- replace with your actual Page ID
+FEATURED_PAGE_ID = "1285"
 API_BASE = f"https://public-api.wordpress.com/rest/v1.1/sites/{WP_SITE}"
 HEADERS = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
 LINKEDIN_POSTS = [
-    {"title": "Post title 1", "url": "https://linkedin.com/posts/..."},
-    {"title": "Post title 2", "url": "https://linkedin.com/posts/..."},
-    # add more here over time
+    {
+        "title": "Future Trends in Psychology 2026-2030",
+        "url": "https://www.linkedin.com/posts/d-durga-116800416_future-trends-in-psychology-20262030-activity-7478706492523716608-qLAw",
+    },
+    {
+        "title": "Psychology Career Professional Roadmap",
+        "url": "https://www.linkedin.com/posts/d-durga-116800416_psychology-career-professional-roadmap-activity-7479058016739147776-GoAQ",
+    },
+    {
+        "title": "The 25 Greatest Psychology Discoveries",
+        "url": "https://www.linkedin.com/posts/d-durga-116800416_the-25-greatest-psychology-discoveries-activity-7479539046956941313-3rzI",
+    },
 ]
 
 DISPLAY_COUNT = 8
