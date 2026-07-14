@@ -2,16 +2,17 @@
 Featured Content Page Updater
 --------------------------------------
 Builds a premium navy/gold styled WordPress.com page combining:
-  1. Recent Telegram channel posts (with images, scraped from public preview)
+  1. Recent Telegram channel posts (with images, parsed from the
+     public t.me/s/ preview page using BeautifulSoup)
   2. A rotating selection of LinkedIn article links
 Runs daily via GitHub Actions alongside the main content refresh script.
 """
 
 import os
-import re
 import random
 import datetime
 import requests
+from bs4 import BeautifulSoup
 
 WP_SITE = os.environ["WP_SITE"]
 ACCESS_TOKEN = os.environ["WP_ACCESS_TOKEN"]
@@ -79,38 +80,37 @@ GOLD = "#d4af37"
 
 
 def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
-    """Pull recent posts (image + text) from the public Telegram channel preview page.
-    No login required. May need adjustment if Telegram changes its HTML structure."""
+    """Pull recent posts (image + text) from Telegram's public preview page.
+    t.me/s/ is Telegram's own SEO/preview endpoint - no login, no JS needed."""
     url = f"https://t.me/s/{TELEGRAM_CHANNEL}"
+
     try:
         r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
-        html = r.text
     except requests.RequestException:
         return []
 
-    posts = []
-    for block in html.split('tgme_widget_message_bubble')[1:]:
-        img_match = re.search(
-            r'tgme_widget_message_photo_wrap[^"]*"\s*style="[^"]*background-image:url\(\'([^\']+)\'\)',
-            block
-        )
-        text_match = re.search(
-            r'tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>',
-            block, re.DOTALL
-        )
+    soup = BeautifulSoup(r.text, "html.parser")
+    messages = soup.find_all("div", class_="tgme_widget_message_bubble")
 
-        if not img_match:
+    posts = []
+    for msg in messages:
+        photo_div = msg.find("a", class_="tgme_widget_message_photo_wrap")
+        if not photo_div or not photo_div.get("style"):
             continue
 
-        img_url = img_match.group(1)
-        if text_match:
-            clean_text = re.sub('<[^<]+?>', '', text_match.group(1)).strip()
-            clean_text = clean_text.split('\n')[0][:120]
-        else:
-            clean_text = "View post on Telegram"
+        style = photo_div["style"]
+        start = style.find("url('") + 5
+        end = style.find("')", start)
+        img_url = style[start:end] if start > 4 and end > start else None
+        if not img_url:
+            continue
 
-        posts.append({"image": img_url, "text": clean_text})
+        text_div = msg.find("div", class_="tgme_widget_message_text")
+        text = text_div.get_text(separator=" ", strip=True) if text_div else "View post on Telegram"
+        text = text[:120]
+
+        posts.append({"image": img_url, "text": text})
 
     return posts[-limit:] if posts else []
 
@@ -124,7 +124,8 @@ def build_telegram_section():
             f'<div style="background-color:{NAVY}; padding:20px 16px; text-align:center;">'
             f'<p style="color:{GOLD}; margin:0;">'
             f'<a href="{channel_link}" style="color:{GOLD};" target="_blank" rel="noopener">'
-            f'Visit our Telegram channel &#8594;</a></p></div>'
+            f'Visit our Telegram channel &#8594;</a></p>'
+            f'</div>'
         )
 
     cards = ""
@@ -135,7 +136,8 @@ def build_telegram_section():
             f'<img src="{p["image"]}" style="width:100%; height:170px; object-fit:cover; display:block;" />'
             f'<div style="padding:14px 18px;">'
             f'<p style="margin:0; color:#ffffff; font-size:15px;">{p["text"]}</p>'
-            f'</div></div>'
+            f'</div>'
+            f'</div>'
         )
 
     return (
@@ -178,11 +180,13 @@ def build_linkedin_section():
 
 def build_featured_content():
     today = datetime.date.today().strftime("%d %B %Y")
+
     header = (
         f'<div style="background-color:{NAVY}; padding:10px 16px 0 16px; text-align:center;">'
         f'<p style="color:#ffffff; font-size:13px; opacity:0.7; margin:0;">Updated {today}</p>'
         f'</div>'
     )
+
     return header + build_telegram_section() + build_linkedin_section()
 
 
