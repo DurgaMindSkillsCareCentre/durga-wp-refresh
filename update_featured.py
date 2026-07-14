@@ -3,7 +3,10 @@ Featured Content Page Updater
 --------------------------------------
 Builds a premium navy/gold styled WordPress.com page combining:
   1. Recent Telegram channel posts (image + caption + clickable link,
-     parsed from the public telegram.me/s/ preview page using BeautifulSoup)
+     parsed from the public telegram.me/s/ preview page using BeautifulSoup).
+     Handles Telegram's grouped-album behavior, where only one photo in a
+     multi-photo post carries the shared caption - missing captions are
+     filled in from the nearest neighboring photo in the same post.
   2. A rotating selection of LinkedIn article links
 Runs daily via GitHub Actions alongside the main content refresh script.
 """
@@ -93,27 +96,38 @@ def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
     soup = BeautifulSoup(r.text, "html.parser")
     messages = soup.find_all("div", class_="tgme_widget_message", attrs={"data-post": True})
 
-    posts = []
+    entries = []
     for msg in messages:
         photo_div = msg.find("a", class_="tgme_widget_message_photo_wrap")
-        if not photo_div or not photo_div.get("style"):
-            continue
-
-        style = photo_div["style"]
-        start = style.find("url('") + 5
-        end = style.find("')", start)
-        img_url = style[start:end] if start > 4 and end > start else None
-        if not img_url:
-            continue
+        img_url = None
+        if photo_div and photo_div.get("style"):
+            style = photo_div["style"]
+            start = style.find("url('") + 5
+            end = style.find("')", start)
+            if start > 4 and end > start:
+                img_url = style[start:end]
 
         text_div = msg.find("div", class_="tgme_widget_message_text")
-        text = text_div.get_text(separator=" ", strip=True) if text_div else "Durga MindSkillsCare Centre"
-        text = text[:120]
+        text = text_div.get_text(separator=" ", strip=True) if text_div else ""
 
         post_id = msg.get("data-post")
         post_link = f"https://telegram.me/s/{post_id}" if post_id else f"https://telegram.me/s/{TELEGRAM_CHANNEL}"
 
-        posts.append({"image": img_url, "text": text, "link": post_link})
+        entries.append({"image": img_url, "text": text, "link": post_link})
+
+    # Telegram albums (multiple photos posted together) attach the caption
+    # to only one photo in the group. Borrow it for the others nearby.
+    for i, e in enumerate(entries):
+        if e["text"]:
+            continue
+        for j in list(range(i - 1, -1, -1)) + list(range(i + 1, len(entries))):
+            if entries[j]["text"]:
+                e["text"] = entries[j]["text"]
+                break
+
+    posts = [e for e in entries if e["image"]]
+    for p in posts:
+        p["text"] = p["text"][:120] if p["text"] else "Durga MindSkillsCare Centre"
 
     return posts[-limit:] if posts else []
 
