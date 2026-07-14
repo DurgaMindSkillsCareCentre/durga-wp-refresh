@@ -82,7 +82,7 @@ GOLD = "#d4af37"
 def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
     """Pull recent posts (image + text) from Telegram's public preview page.
     t.me/s/ is Telegram's own SEO/preview endpoint - no login, no JS needed."""
-    url = f"https://t.me/s/{TELEGRAM_CHANNEL}"
+    url = f"https://telegram.me/s/{TELEGRAM_CHANNEL}"
 
     try:
         r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
@@ -117,7 +117,7 @@ def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
 
 def build_telegram_section():
     posts = fetch_telegram_posts()
-    channel_link = f"https://t.me/s/{TELEGRAM_CHANNEL}"
+    channel_link = f"https://telegram.me/s/{TELEGRAM_CHANNEL}"
 
     if not posts:
         return (
