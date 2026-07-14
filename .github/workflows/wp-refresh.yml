@@ -32,6 +32,12 @@ jobs:
           WP_ACCESS_TOKEN: ${{ secrets.WP_ACCESS_TOKEN }}
         run: python update_featured.py
 
+      - name: Update Blogger featured page
+        env:
+          WP_SITE: ${{ secrets.WP_SITE }}
+          WP_ACCESS_TOKEN: ${{ secrets.WP_ACCESS_TOKEN }}
+        run: python update_blogger_featured.py
+
       - name: Email weekly summary
         uses: dawidd6/action-send-mail@v3
         with:
