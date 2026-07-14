@@ -2,8 +2,8 @@
 Featured Content Page Updater
 --------------------------------------
 Builds a premium navy/gold styled WordPress.com page combining:
-  1. Recent Telegram channel posts (with images, parsed from the
-     public t.me/s/ preview page using BeautifulSoup)
+  1. Recent Telegram channel posts (image + caption + clickable link,
+     parsed from the public telegram.me/s/ preview page using BeautifulSoup)
   2. A rotating selection of LinkedIn article links
 Runs daily via GitHub Actions alongside the main content refresh script.
 """
@@ -80,8 +80,8 @@ GOLD = "#d4af37"
 
 
 def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
-    """Pull recent posts (image + text) from Telegram's public preview page.
-    t.me/s/ is Telegram's own SEO/preview endpoint - no login, no JS needed."""
+    """Pull recent posts (image + caption + clickable link) from
+    Telegram's public preview page. No login, no JS needed."""
     url = f"https://telegram.me/s/{TELEGRAM_CHANNEL}"
 
     try:
@@ -91,7 +91,7 @@ def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
         return []
 
     soup = BeautifulSoup(r.text, "html.parser")
-    messages = soup.find_all("div", class_="tgme_widget_message_bubble")
+    messages = soup.find_all("div", class_="tgme_widget_message", attrs={"data-post": True})
 
     posts = []
     for msg in messages:
@@ -107,10 +107,13 @@ def fetch_telegram_posts(limit=TELEGRAM_LIMIT):
             continue
 
         text_div = msg.find("div", class_="tgme_widget_message_text")
-        text = text_div.get_text(separator=" ", strip=True) if text_div else "View post on Telegram"
+        text = text_div.get_text(separator=" ", strip=True) if text_div else "Durga MindSkillsCare Centre"
         text = text[:120]
 
-        posts.append({"image": img_url, "text": text})
+        post_id = msg.get("data-post")
+        post_link = f"https://telegram.me/s/{post_id}" if post_id else f"https://telegram.me/s/{TELEGRAM_CHANNEL}"
+
+        posts.append({"image": img_url, "text": text, "link": post_link})
 
     return posts[-limit:] if posts else []
 
@@ -131,6 +134,7 @@ def build_telegram_section():
     cards = ""
     for p in posts:
         cards += (
+            f'<a href="{p["link"]}" target="_blank" rel="noopener" style="text-decoration:none;">'
             f'<div style="background-color:{NAVY_CARD}; border:1px solid {GOLD}; '
             f'border-radius:10px; overflow:hidden; margin:0 0 14px 0;">'
             f'<img src="{p["image"]}" style="width:100%; height:170px; object-fit:cover; display:block;" />'
@@ -138,6 +142,7 @@ def build_telegram_section():
             f'<p style="margin:0; color:#ffffff; font-size:15px;">{p["text"]}</p>'
             f'</div>'
             f'</div>'
+            f'</a>'
         )
 
     return (
